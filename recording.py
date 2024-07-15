@@ -10,7 +10,7 @@ def main():
     bitalino_sampling_rate = 1000
     bitalino_channels = [0, 1, 2]
 
-    session_id = int(input("Session ID: "))
+    session_id = input("Session ID: ")
     device = Device(bitalino_address, bitalino_sampling_rate, bitalino_channels, session_id)
 
     # Starting session acquisition

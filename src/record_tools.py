@@ -34,12 +34,11 @@ class Device:
         time_stamp = np.linspace(self.sample_number, self.sample_number + 1 - 1/self.sampling_rate, self.sampling_rate)
         states = np.zeros(self.sampling_rate).tolist()
 
-        raw_data = self.device.read(self.sampling_rate)
-
         if self.state != 0:
             states[0] = self.state
             self.state = 0
 
+        raw_data = self.device.read(self.sampling_rate)
         sensor1 = raw_data[:, -3]
         sensor2 = raw_data[:, -2]
         sensor3 = raw_data[:, -1]
