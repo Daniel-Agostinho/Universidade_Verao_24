@@ -38,7 +38,7 @@ class Device:
         self.device.start(self.sampling_rate, self.channels)
 
         while self.session:
-            sensor1, sensor2, sensor3 = self.get_data()
+            self.get_data()
 
     def get_data(self):
         raw_data = self.device.read(self.sampling_rate)
@@ -52,9 +52,14 @@ class Device:
         sensor3 = raw_data[:, -1].tolist()   # EDA
         self.cache_data(sensor3, "EDA")
 
-        self.time += 1
+        # Classifier predict
+        # Test
+        if self.time == 6 or self.time == 15:
+            self.cache_data(np.ones(self.sampling_rate), "Lie")
+        else:
+            self.cache_data(np.zeros(self.sampling_rate), "Lie")
 
-        return sensor1, sensor2, sensor3
+        self.time += 1
 
     def stop(self):
         self.session = False
