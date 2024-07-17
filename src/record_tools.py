@@ -39,9 +39,9 @@ class Device:
             self.state = 0
 
         raw_data = self.device.read(self.sampling_rate)
-        sensor1 = raw_data[:, -3]
-        sensor2 = raw_data[:, -2]
-        sensor3 = raw_data[:, -1]
+        sensor1 = raw_data[:, -3]   # Resp
+        sensor2 = raw_data[:, -2]   # ECG
+        sensor3 = raw_data[:, -1]   # EDA
 
         data = np.vstack((time_stamp, sensor1, sensor2, sensor3, states)).transpose()
 
@@ -75,7 +75,7 @@ class Device:
 
         with open(file_name, "a", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow(["Time", "Sensor1", "Sensor2", "Sensor3", "Trigger"])
+            writer.writerow(["Time", "Resp", "ECG", "EDA", "Trigger"])
 
         return file_name
 
