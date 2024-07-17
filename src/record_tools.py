@@ -13,7 +13,7 @@ class Device:
         self.channels = channels
         self.session_id = session_id
         self.save_file = self.open_file()
-        self.state = 0
+        self.state = -1
         self.sample_number = 0
         self.session = False
         self.session_thread = None
@@ -32,11 +32,12 @@ class Device:
 
     def get_data(self):
         time_stamp = np.linspace(self.sample_number, self.sample_number + 1 - 1/self.sampling_rate, self.sampling_rate)
-        states = np.zeros(self.sampling_rate).tolist()
+        states = np.ones(self.sampling_rate) * -1
+        states = states.tolist()
 
-        if self.state != 0:
+        if self.state != -1:
             states[0] = self.state
-            self.state = 0
+            self.state = -1
 
         raw_data = self.device.read(self.sampling_rate)
         sensor1 = raw_data[:, -3]   # Resp
