@@ -1,5 +1,4 @@
 from src.record_tools import Device
-import time
 import keyboard
 
 
