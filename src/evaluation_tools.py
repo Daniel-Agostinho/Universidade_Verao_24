@@ -52,8 +52,8 @@ class Device:
         sensor3 = raw_data[:, -1].tolist()   # EDA
         self.cache_data(sensor3, "EDA")
 
-        # Classifier predict
-        # Test
+        # TODO Classifier predict
+        # Place holder test
         if self.time == 6 or self.time == 15:
             self.cache_data(np.ones(self.sampling_rate), "Lie")
         else:
