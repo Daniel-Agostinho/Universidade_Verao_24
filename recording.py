@@ -1,5 +1,9 @@
+import time
+
 from src.record_tools import Device
 import keyboard
+
+TIME_TRIAL = 24
 
 
 def main():
@@ -15,14 +19,22 @@ def main():
     # Starting session acquisition
     print("Start session acquisition")
     device.start()
+    time.sleep(TIME_TRIAL)
 
     while True:
-        key = keyboard.read_key()
+        device.state = "p"
+        print("Pergunta!")
+        print("Espera resposta...")
+
+        key = keyboard.read_key()   # Block
+        print(f"Resposta : {key}")
         device.state = key
 
         if key == "q":
             device.stop()
             break
+
+        time.sleep(TIME_TRIAL)
 
     print("Ending session")
 
