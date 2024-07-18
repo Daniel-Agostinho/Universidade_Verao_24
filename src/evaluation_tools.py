@@ -1,7 +1,7 @@
 import threading
 import numpy as np
 import matplotlib.pyplot as plt
-from .record_tools import connect_bitalino
+from .record_tools import connect_bitalino, convert_units
 
 
 SIGNAL_COLOR = {
@@ -49,7 +49,7 @@ class Device:
         sensor2 = raw_data[:, -2].tolist()   # ECG
         self.cache_data(sensor2, "ECG")
 
-        sensor3 = raw_data[:, -1].tolist()   # EDA
+        sensor3 = convert_units(raw_data[:, -1]).tolist()   # EDA
         self.cache_data(sensor3, "EDA")
 
         # TODO Classifier predict
@@ -98,7 +98,12 @@ def live_plots(device):
             data = signals[signal]
             lines[idx].set_data(x, data)
             ax.set_xlim(time - 8, time)
-            ax.set_ylim(data.min() - 5, data.max() + 5)
+
+            if signal == "Lie":
+                ax.set_ylim(-0.5, 1.5)
+            else:
+                ax.set_ylim(data.min() - 5, data.max() + 5)
+
             ax.draw_artist(lines[idx])
             fig.canvas.blit(ax.bbox)
 
