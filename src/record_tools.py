@@ -42,7 +42,7 @@ class Device:
         raw_data = self.device.read(self.sampling_rate)
         sensor1 = raw_data[:, -3]   # Resp
         sensor2 = raw_data[:, -2]   # ECG
-        sensor3 = raw_data[:, -1]   # EDA
+        sensor3 = convert_units(raw_data[:, -1])   # EDA
 
         data = np.vstack((time_stamp, sensor1, sensor2, sensor3, states)).transpose()
 
@@ -99,6 +99,11 @@ def connect_bitalino(address):
     print(f"Connected to device: {address}")
 
     return device
+
+
+def convert_units(data):
+    eda = (data / 2**10) * 3.3 / 0.12
+    return eda
 
 
 if __name__ == '__main__':
