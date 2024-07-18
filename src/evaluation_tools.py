@@ -98,7 +98,12 @@ def live_plots(device):
             data = signals[signal]
             lines[idx].set_data(x, data)
             ax.set_xlim(time - 8, time)
-            ax.set_ylim(data.min() - 5, data.max() + 5)
+
+            if signal == "Lie":
+                ax.set_ylim(-0.5, 1.5)
+            else:
+                ax.set_ylim(data.min() - 5, data.max() + 5)
+
             ax.draw_artist(lines[idx])
             fig.canvas.blit(ax.bbox)
 
