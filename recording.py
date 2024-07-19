@@ -17,24 +17,24 @@ def main():
     device = Device(bitalino_address, bitalino_sampling_rate, bitalino_channels, session_id)
 
     # Starting session acquisition
-    print("Start session acquisition")
+    print("Start session acquisition\n")
     device.start()
     time.sleep(TIME_TRIAL)
 
-    while True:
+    question = 1
+    while question <= 20:
         device.state = "p"
-        print("Pergunta!")
+        print(f"Pergunta {question}!")
         print("Espera resposta...")
 
         key = keyboard.read_key()   # Block
-        print(f"Resposta : {key}")
+        print(f"Resposta : {key}\n")
         device.state = key
-
-        if key == "q":
-            device.stop()
-            break
-
         time.sleep(TIME_TRIAL)
+        question += 1
+
+    device.state = "q"
+    device.stop()
 
     print("Ending session")
 
