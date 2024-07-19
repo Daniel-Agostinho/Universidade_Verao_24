@@ -4,6 +4,7 @@ from src.record_tools import Device
 import keyboard
 
 TIME_TRIAL = 24
+N_QUESTIONS = 20
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
     time.sleep(TIME_TRIAL)
 
     question = 1
-    while question <= 20:
+    while question <= N_QUESTIONS:
         device.state = "p"
         print(f"Pergunta {question}!")
         print("Espera resposta...")
