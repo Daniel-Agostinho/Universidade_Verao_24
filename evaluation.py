@@ -4,7 +4,7 @@ from src.evaluation_tools import Device, live_plots
 
 def main():
     # Bitalino configuration
-    bitalino_address = "00:21:08:35:15:17"
+    bitalino_address = "00:21:08:35:15:17" # “/dev/tty.BITalino-XX-XX”
     bitalino_sampling_rate = 1000
     bitalino_channels = [0, 1, 2]
 
