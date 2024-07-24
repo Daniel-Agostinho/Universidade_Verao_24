@@ -83,8 +83,14 @@ class Device:
     def lie_detect(self):
 
         if self.predict_data.shape[0] == 10 * self.sampling_rate:
+
+            # Do prediction
             value = self.predict()
             self.cache_data(np.ones(self.sampling_rate) * value, "Lie")
+
+            # Reset for next prediction
+            self.do_predict = False
+            self.predict_data = None
             return
 
         self.cache_data(np.zeros(self.sampling_rate), "Lie")
@@ -96,6 +102,8 @@ class Device:
 
     def predict(self):
         features = self.extract_features()
+
+        # Return either 1 or 0
         return 1
 
 
@@ -104,7 +112,8 @@ def live_plots(device):
     def key_press(event):
         print('press', event.key)
         if event.key == '1':
-            device.do_predict = True
+            if not device.do_predict:
+                device.do_predict = True
 
     signal_layout = ["Resp", "ECG", "EDA", "Lie"]
 
