@@ -14,13 +14,14 @@ SIGNAL_COLOR = {
 
 class Device:
     def __init__(self, address, sampling_rate, channels):
-        self.device = connect_bitalino(address)
+        # self.device = connect_bitalino(address)
         self.sampling_rate = sampling_rate
         self.channels = channels
         self.classifier = None
         self.session = False
         self.session_thread = None
         self.time = 0
+        self.do_predict = False
 
         self.cached_data = {
             "Resp": np.zeros(sampling_rate * 8),
@@ -28,6 +29,8 @@ class Device:
             "EDA": np.zeros(sampling_rate * 8),
             "Lie": np.zeros(sampling_rate * 8),
         }
+
+        self.predict_data = None
 
     def start(self):
         self.session_thread = threading.Thread(target=self.start_acquisition)
@@ -39,8 +42,16 @@ class Device:
 
         while self.session:
             self.get_data()
+            self.lie_detect()
 
     def get_data(self):
+
+        if self.do_predict and self.predict_data is None:
+            pre_resp = self.cached_data["Resp"][-2 * self.sampling_rate:]
+            pre_ecg = self.cached_data["ECG"][-2 * self.sampling_rate:]
+            pre_eda = self.cached_data["EDA"][-2 * self.sampling_rate:]
+            self.predict_data = np.vstack((pre_resp, pre_ecg, pre_eda)).transpose()
+
         raw_data = self.device.read(self.sampling_rate)
 
         sensor1 = raw_data[:, -3].tolist()   # Resp
@@ -52,12 +63,9 @@ class Device:
         sensor3 = convert_units(raw_data[:, -1]).tolist()   # EDA
         self.cache_data(sensor3, "EDA")
 
-        # TODO Classifier predict
-        # Place holder test
-        if self.time == 6 or self.time == 15:
-            self.cache_data(np.ones(self.sampling_rate), "Lie")
-        else:
-            self.cache_data(np.zeros(self.sampling_rate), "Lie")
+        if self.predict_data:
+            new_data = np.vstack((sensor1, sensor2, sensor3)).transpose()
+            self.predict_data = np.hstack((self.predict_data, new_data))
 
         self.time += 1
 
@@ -72,18 +80,38 @@ class Device:
         new_data = np.append(old_data, data)
         self.cached_data[tag] = new_data[-self.sampling_rate * 8:]
 
+    def lie_detect(self):
+
+        if self.predict_data.shape[0] == 10 * self.sampling_rate:
+            value = self.predict()
+            self.cache_data(np.ones(self.sampling_rate) * value, "Lie")
+            return
+
+        self.cache_data(np.zeros(self.sampling_rate), "Lie")
+
+    def extract_features(self):
+        # Self predict_data 10 * fs X 3
+        # resp, ecg, eda
+        return 1
+
     def predict(self):
-        pass
+        features = self.extract_features()
+        return 1
 
 
 def live_plots(device):
+
+    def key_press(event):
+        print('press', event.key)
+        if event.key == '1':
+            device.do_predict = True
 
     signal_layout = ["Resp", "ECG", "EDA", "Lie"]
 
     fig, axs, lines = build_plot(signal_layout)
     plt.show(block=False)
     live_plot = True
-
+    fig.canvas.mpl_connect('key_press_event', key_press)
     plt.ion()
 
     while live_plot:

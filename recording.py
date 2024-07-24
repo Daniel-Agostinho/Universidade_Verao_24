@@ -4,13 +4,13 @@ from src.record_tools import Device
 import keyboard
 
 TIME_TRIAL = 24
-N_QUESTIONS = 20
+N_QUESTIONS = 18
 
 
 def main():
 
     # Bitalino configuration
-    bitalino_address = "00:21:08:35:15:17"  # “/dev/tty.BITalino-XX-XX”
+    bitalino_address = "00:21:08:35:15:17" # “/dev/tty.BITalino-XX-XX”
     bitalino_sampling_rate = 1000
     bitalino_channels = [0, 1, 2]
 
