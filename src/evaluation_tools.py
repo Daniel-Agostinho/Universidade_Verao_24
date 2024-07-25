@@ -65,7 +65,7 @@ class Device:
 
         if self.predict_data:
             new_data = np.vstack((sensor1, sensor2, sensor3)).transpose()
-            self.predict_data = np.hstack((self.predict_data, new_data))
+            self.predict_data = np.vstack((self.predict_data, new_data))
 
         self.time += 1
 
