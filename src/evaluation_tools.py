@@ -14,7 +14,7 @@ SIGNAL_COLOR = {
 
 class Device:
     def __init__(self, address, sampling_rate, channels):
-        # self.device = connect_bitalino(address)
+        self.device = connect_bitalino(address)
         self.sampling_rate = sampling_rate
         self.channels = channels
         self.classifier = None
