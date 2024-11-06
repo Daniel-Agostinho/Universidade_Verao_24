@@ -1,7 +1,11 @@
+import os.path
 import threading
 import numpy as np
+import pickle
 import matplotlib.pyplot as plt
+import neurokit2 as nk
 from .record_tools import connect_bitalino, convert_units
+from sklearn.tree import DecisionTreeClassifier
 
 
 SIGNAL_COLOR = {
@@ -17,7 +21,7 @@ class Device:
         self.device = connect_bitalino(address)
         self.sampling_rate = sampling_rate
         self.channels = channels
-        self.classifier = None
+        self.classifier = load_model()
         self.session = False
         self.session_thread = None
         self.time = 0
@@ -27,7 +31,7 @@ class Device:
             "Resp": np.zeros(sampling_rate * 8),
             "ECG": np.zeros(sampling_rate * 8),
             "EDA": np.zeros(sampling_rate * 8),
-            "Lie": np.zeros(sampling_rate * 8),
+            "Lie": np.ones(sampling_rate * 8) * -1,
         }
 
         self.predict_data = None
@@ -46,28 +50,32 @@ class Device:
 
     def get_data(self):
 
-        if self.do_predict and self.predict_data is None:
-            pre_resp = self.cached_data["Resp"][-2 * self.sampling_rate:]
-            pre_ecg = self.cached_data["ECG"][-2 * self.sampling_rate:]
-            pre_eda = self.cached_data["EDA"][-2 * self.sampling_rate:]
-            self.predict_data = np.vstack((pre_resp, pre_ecg, pre_eda)).transpose()
+        try:
+            if self.do_predict and self.predict_data is None:
+                pre_resp = self.cached_data["Resp"][-2 * self.sampling_rate:]
+                pre_ecg = self.cached_data["ECG"][-2 * self.sampling_rate:]
+                pre_eda = self.cached_data["EDA"][-2 * self.sampling_rate:]
+                self.predict_data = np.vstack((pre_resp, pre_ecg, pre_eda)).transpose()
 
-        raw_data = self.device.read(self.sampling_rate)
+            raw_data = self.device.read(self.sampling_rate)
 
-        sensor1 = raw_data[:, -3].tolist()   # Resp
-        self.cache_data(sensor1, "Resp")
+            sensor1 = raw_data[:, -3].tolist()   # Resp
+            self.cache_data(sensor1, "Resp")
 
-        sensor2 = raw_data[:, -2].tolist()   # ECG
-        self.cache_data(sensor2, "ECG")
+            sensor2 = raw_data[:, -2].tolist()   # ECG
+            self.cache_data(sensor2, "ECG")
 
-        sensor3 = convert_units(raw_data[:, -1]).tolist()   # EDA
-        self.cache_data(sensor3, "EDA")
+            sensor3 = convert_units(raw_data[:, -1]).tolist()   # EDA
+            self.cache_data(sensor3, "EDA")
 
-        if self.predict_data:
-            new_data = np.vstack((sensor1, sensor2, sensor3)).transpose()
-            self.predict_data = np.vstack((self.predict_data, new_data))
+            if self.do_predict and self.predict_data is not None:
+                new_data = np.vstack((sensor1, sensor2, sensor3)).transpose()
+                self.predict_data = np.vstack((self.predict_data, new_data))
 
-        self.time += 1
+            self.time += 1
+
+        except Exception:
+            print("time out")
 
     def stop(self):
         self.session = False
@@ -82,6 +90,10 @@ class Device:
 
     def lie_detect(self):
 
+        if self.predict_data is None:
+            self.cache_data(np.ones(self.sampling_rate) * -1, "Lie")
+            return
+
         if self.predict_data.shape[0] == 10 * self.sampling_rate:
 
             # Do prediction
@@ -93,18 +105,49 @@ class Device:
             self.predict_data = None
             return
 
-        self.cache_data(np.zeros(self.sampling_rate), "Lie")
+        self.cache_data(np.ones(self.sampling_rate) * -1, "Lie")
 
     def extract_features(self):
-        # Self predict_data 10 * fs X 3
-        # resp, ecg, eda
-        return 1
+
+        resp_data = self.predict_data[:, 0]
+        ecg_data = self.predict_data[:, 1]
+        eda_data = self.predict_data[:, 2]
+
+        our_features = []
+
+        pre_signal = 2 * self.sampling_rate
+        post_signal = 8 * self.sampling_rate
+        trigger = np.zeros(10 * self.sampling_rate)
+        trigger[pre_signal] = 1
+
+        # ECG
+        signals = nk.bio_process(ecg_data, sampling_rate=self.sampling_rate)
+        events = nk.events_find(trigger, threshold=-0.0, event_conditions=[1], threshold_keep='above')
+        epochs = nk.epochs_create(signals, events, sampling_rate=1000, epochs_start=-2.0, epochs_end=7.0)
+        ecg_features = nk.ecg_analyze(epochs, sampling_rate=self.sampling_rate)
+
+        x = ecg_features[['ECG_Rate_Baseline',
+                            'ECG_Rate_Max', 'ECG_Rate_Min', 'ECG_Rate_Mean', 'ECG_Rate_SD',
+                            'ECG_Rate_Max_Time', 'ECG_Rate_Min_Time', 'ECG_Rate_Trend_Linear',
+                            'ECG_Rate_Trend_Quadratic', 'ECG_Rate_Trend_R2', 'ECG_Quality_Mean']]
+
+        x['EDA_Mean'] = eda_data[-post_signal:].mean() / eda_data[:pre_signal].mean()
+        x['EDA_SD'] = eda_data[-post_signal:].std() / eda_data[:pre_signal].std()
+        x['EDA_Max'] = eda_data[-post_signal:].max() / eda_data[:pre_signal].mean()
+        x['EDA_Min'] = eda_data[-post_signal:].min() / eda_data[:pre_signal].mean()
+
+        # Add column to X with the Resp features
+        x['Resp_Mean'] = resp_data[-post_signal:].mean() / resp_data[:pre_signal].mean()
+        x['Resp_SD'] = resp_data[-post_signal:].std() / resp_data[:pre_signal].std()
+        x['Resp_Max'] = resp_data[-post_signal:].max() / resp_data[:pre_signal].mean()
+        x['Resp_Min'] = resp_data[-post_signal:].min() / resp_data[:pre_signal].mean()
+
+        return x
 
     def predict(self):
         features = self.extract_features()
-
-        # Return either 1 or 0
-        return 1
+        predict = self.classifier.predict(features)
+        return predict[0]
 
 
 def live_plots(device):
@@ -137,7 +180,7 @@ def live_plots(device):
             ax.set_xlim(time - 8, time)
 
             if signal == "Lie":
-                ax.set_ylim(-0.5, 1.5)
+                ax.set_ylim(-1.5, 1.5)
             else:
                 ax.set_ylim(data.min() - 5, data.max() + 5)
 
@@ -171,6 +214,19 @@ def build_plot(signals):
 def build_x(time, fs):
     x = np.linspace(time - 8, time, fs * 8)
     return x
+
+
+def load_model():
+    model_path = os.path.join(
+        "src",
+        "model",
+        "model.pkl"
+    )
+
+    with open(model_path, 'rb') as f:
+        clf = pickle.load(f)
+
+    return clf
 
 
 if __name__ == '__main__':
